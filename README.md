@@ -10,7 +10,7 @@ Same simulation assuming 2D straight-line motion.
 ## Usage:
 Run on a cluster using
 
-__sbatch batch_sp3.sh__ 
+__sbatch batch_mc.sh__ 
 
 *__init__.py*
   - Imports
