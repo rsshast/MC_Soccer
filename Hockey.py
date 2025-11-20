@@ -1,7 +1,7 @@
 # MC Simulation of an Ice Hockey Game
 # MC Class
-import os
-os.chdir(r"C:\Users\ravis\OneDrive\Desktop\College\UMICH\Year_3\NERS 544")
+#import os
+#os.chdir(r"C:\Users\ravis\OneDrive\Desktop\College\UMICH\Year_3\NERS 544")
 from params import *
 import numpy as np
 
@@ -534,7 +534,7 @@ class Hockey():
                 self.show_position(shoot_flag,action, possesion)
                 
             #if actions > 10: break
-            #if self.t > 1900: break
+            #if self.t > 100: break
             #if self.blue_score != 0 or self.red_score!= 0: break
         
         self.animate_game()
