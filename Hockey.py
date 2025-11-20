@@ -4,7 +4,7 @@ from params import *
 import numpy as np
 
 class Hockey():
-    def __init__(self, Length, Width, num_players,num_samples):
+    def __init__(self, Length, Width, num_players):
         np.random.seed(10)
         self.Length = Length
         self.Width = Width
@@ -19,10 +19,8 @@ class Hockey():
         self.blue_score = 0
         self.red_score = 0
         self.score = [self.red_score,self.blue_score]
-        self.N = int(num_samples)
-        self.has_ball = 1
-        self.no_ball = 0
-        self.eps = 1e-6 # boundary push
+        self.has_ball = 1.
+        self.no_ball = 0.
         
         self.t = 0. # time (s) initally set here, updated throughout sim
         self.total_time = 3600 # seconds
@@ -62,8 +60,7 @@ class Hockey():
             self.r2 = np.array([.5*self.starting_position[0], 2/3*self.Width, self.no_ball])
             self.r3 = np.array([.5*self.starting_position[0], 1/3*self.Width, self.no_ball])
             self.r4 = np.array([.5*self.starting_position[0], 0, self.no_ball])
-#            self.player_list = [self.b1,self.b2,self.b3,self.b4,
-#                                self.r1,self.r2,self.r3,self.r4]
+
         else: 
             self.r1 = np.array([self.starting_position[0], self.starting_position[1], self.has_ball])
             self.r2 = np.array([.5*self.starting_position[0], 1.5*self.starting_position[1], self.no_ball])
@@ -74,8 +71,6 @@ class Hockey():
             self.b3 = np.array([1.5*self.starting_position[0], 1/3*self.Width, self.no_ball])
             self.b4 = np.array([1.5*self.starting_position[0], 0, self.no_ball])
         
-#            self.player_list = [self.r1,self.r2,self.r3,self.r4,
-#                               self.b1,self.b2,self.b3,self.b4]
         self.player_list = [self.b1,self.b2,self.b3,self.b4,
                                 self.r1,self.r2,self.r3,self.r4]
     
@@ -209,7 +204,7 @@ class Hockey():
     
     def dist_to_teammates(self,arrays):
         for i, arr in enumerate(arrays,start=0):
-            if arr[2] == 1.0: 
+            if arr[2] == self.has_ball: 
                 pwb = arr # player with ball (pwb)
                 break
             
@@ -292,7 +287,7 @@ class Hockey():
     
     def move_attackers_without_ball(self,player_list,goal_mid, t, possesion):
         for v in player_list:
-            if v[2] == 1.0: continue 
+            if v[2] == self.has_ball: continue 
             speed = self.sample_gaussian(self.speed, self.speed/5)
             if (v[0] - goal_mid[0]) != 0: theta = np.arctan((v[1] - goal_mid[1]) 
                                                             / (v[0] - goal_mid[0])) 
@@ -332,7 +327,7 @@ class Hockey():
             
             # if the defenders are not closest to the ball 
             else: 
-                if v[2] == 1.0: continue 
+                if v[2] == self.has_ball: continue 
                 speed = self.sample_gaussian(self.speed, self.speed/5)
                 if (v[0] - goal_mid[0]) != 0: theta = np.arctan((v[1] - goal_mid[1]) 
                                                                 / (v[0] - goal_mid[0])) 
@@ -382,7 +377,7 @@ class Hockey():
             # search player list to see who has the ball
             count = 0
             for arr in self.player_list:
-                if arr[2] == 1.0:
+                if arr[2] == self.has_ball:
                     possesion = "blue"
                     break
                 if count >= 3:
@@ -406,7 +401,7 @@ class Hockey():
             #error checking
             poss_flag = False
             for v in poss_list:
-                if v[2] == 1.0: poss_flag = True
+                if v[2] == self.has_ball: poss_flag = True
                     
             if poss_flag == False: raise ValueError("Error in Possesion Block")
 
@@ -450,20 +445,20 @@ class Hockey():
 
                     for i, arr in enumerate(def_list):
                         if i == min_index: 
-                            arr[2] = 1.0 
+                            arr[2] = self.has_ball 
                             self.ball[0], self.ball[1] = arr[0], arr[1]
                     for arr in poss_list: arr[2] = 0.0
                     
                     print(f'{possesion.upper()} Team Misses Their Shot')
                 
             elif action == "pass": 
-                filtered_vectors = [v for v in poss_list if v[2] != 1.0]
+                filtered_vectors = [v for v in poss_list if v[2] != self.has_ball]
                 for v in poss_list: v[2] = 0.0
                 for i in range(len(filtered_vectors)):
                     if person == d_teammates[i]:
                         self.ball[0] = filtered_vectors[i][0]
                         self.ball[1] = filtered_vectors[i][1]
-                        filtered_vectors[i][2] = 1.0
+                        filtered_vectors[i][2] = self.has_ball
                       
             elif action == None:
                 # sample distance to nearest opponent, and sample stripping
@@ -475,7 +470,7 @@ class Hockey():
                     for v in poss_list: v[2] = 0.0 # clear index
                     for v in def_list:  v[2] = 0.0
                     for i, v in enumerate(def_list):
-                        if i == closest_opp_ind: v[2] = 1.0
+                        if i == closest_opp_ind: v[2] = self.has_ball
                     action = 'strip'
                 
                 # if pass, shoot, and strip fail, do a carry
@@ -484,7 +479,7 @@ class Hockey():
                     # sample distances based on speed from gaussian
                     dist = speed * t
                     for arr in poss_list:
-                        if arr[2] == 1.0:
+                        if arr[2] == self.has_ball:
                             if possesion == 'blue':
                                 arr[0] += dist * -np.cos(angle)
                                 arr[1] += dist *  np.sin(angle)
@@ -539,7 +534,7 @@ class Hockey():
         self.animate_game()
 
 # initialize class
-hk = Hockey(Length,Width,num_players,num_samples)
+hk = Hockey(Length,Width,num_players)
 
 # run
 hk.run(verbose)
