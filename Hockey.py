@@ -1,7 +1,5 @@
 # MC Simulation of an Ice Hockey Game
 # MC Class
-#import os
-#os.chdir(r"C:\Users\ravis\OneDrive\Desktop\College\UMICH\Year_3\NERS 544")
 from params import *
 import numpy as np
 
@@ -356,7 +354,7 @@ class Hockey():
         # actions include shoot, pass, strip, carry. 
         # sampling of those actions occur in that order
         action = 'Start'
-        actions = 0 # debugging term    
+        #actions = 0 # debugging term    
         shoot_flag = False
         if verbose: self.show_position(shoot_flag,action, self.restart_team)
         # don't get stuck in an action loop
@@ -369,14 +367,14 @@ class Hockey():
         
         while self.t < self.total_time:
             # set up problem for each time step
-            actions += 1
+            #actions += 1
             t = self.sample_time(Lambda = .75)
             print("t", self.t.round(3), "s")
             
             # if halftime at 30 minutes
             if self.t >= 1800 and half_time == False:
                 print("HALFTIME")
-                print("Current Score: Red {self.score} Blue")
+                print(f"Current Score: Red {self.score} Blue")
                 # let the other team start with the ball at kickoff
                 self.restart_team = ht_team
                 self.create_players()
@@ -529,7 +527,8 @@ class Hockey():
 
             # printing and shortened runs
             if verbose: 
-                print(actions,action.upper())
+                print(action.upper())
+                #print(actions,action.upper())
                 shoot_flag = True if action == 'shoot' else False
                 self.show_position(shoot_flag,action, possesion)
                 
@@ -544,3 +543,10 @@ hk = Hockey(Length,Width,num_players,num_samples)
 
 # run
 hk.run(verbose)
+print("Game Over!")
+if hk.blue_score > hk.red_score:
+    print("Blue Team Wins!")
+elif hk.blue_score < hk.red_score:
+    print("Red Team Wins!")
+else:
+    print("It's a Tie!")

@@ -5,9 +5,9 @@
 #SBATCH --nodes=1
 #SBATCH --partition=standard
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=36
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=16Gb
-#SBATCH --time=02:00:00
+#SBATCH --time=00:30:00
 #SBATCH --account=bckiedro0
 #SBATCH --export=ALL
 #SBATCH --output=game_state.out
