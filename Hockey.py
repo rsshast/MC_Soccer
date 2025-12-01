@@ -82,6 +82,11 @@ class Hockey():
     def Speed(distance,time): 
         return distance / time
     
+    @staticmethod
+    def sample_gamma(Lambda):
+        xi1, xi2 = np.random.rand(), np.random.rand()
+        return -np.log(xi1 * xi2) / Lambda
+
     def sample_time(self, Lambda = .5):
         # sample time from an exponential distribution
         # fT(t) = Lambda * e ^ (-Lambda * t), t>= 0
@@ -112,17 +117,17 @@ class Hockey():
         
         return dist
     
-    def sample_shoot(self,d_goal, Lambda = .5):
+    def sample_shoot(self,d_goal, Lambda):
         # sample the shooting action
         # performed first 
         # returns "shoot" or None
-        dshoot = self.shoot_prob(self.max_dist)
+        dshoot = self.shoot_prob(self.max_dist,Lambda)
+        #print(dshoot,d_goal)
         return 'shoot' if dshoot >= d_goal else None
     
     @staticmethod
-    def shoot_prob(max_dist,Lambda = .25):
-        xi = np.random.rand()
-        return (-1 / Lambda) * np.log(1 - xi * 
+    def shoot_prob(max_dist,Lambda):
+        return (-1 / Lambda) * np.log(1 - np.random.rand() * 
                                       (1.0 - np.exp(-Lambda * max_dist)))
                 
     def update_score(self):
@@ -132,7 +137,7 @@ class Hockey():
     def sample_gaussian(mu,sigma): 
         # return one sample in a gaussian centered around a mean distance
         # and given std. dev
-        return float(np.random.normal(mu, sigma, 1))
+        return np.random.normal(mu, sigma, 1)[0]
         
     def show_position(self,shoot_flag, action, possesion):
         # Parameters for easy adjustment
@@ -149,6 +154,18 @@ class Hockey():
         plt.plot([self.Length, self.Length], [0.6*self.Width, self.Width], color='black')
         plt.plot([0, self.Length], [0, 0], color='black')
         plt.plot([0, self.Length], [self.Width, self.Width], color='black')
+        plt.plot([self.Length/2, self.Length/2], [0,self.Width], color = 'black')
+
+        # red goalie box
+        plt.plot([0,self.Length / 5], [self.Width/4, self.Width/4], color = 'black')
+        plt.plot([0,self.Length / 5], [3 * self.Width/4, 3 * self.Width/4], color = 'black')
+        plt.plot([self.Length / 5, self.Length/5], [self.Width / 4, 3 * self.Width / 4], color = 'black')
+
+        # blue goalie box
+        plt.plot([.8 * self.Length, self.Length], [self.Width/4, self.Width/4], color = 'black')
+        plt.plot([.8 * self.Length, self.Length], [3 * self.Width/4, 3 * self.Width/4], color = 'black')
+        plt.plot([.8 * self.Length, .8 * self.Length], [self.Width / 4, 3 * self.Width / 4], color = 'black')
+
     
         # Draw red outline if needed
         if shoot_flag:
@@ -161,6 +178,7 @@ class Hockey():
         plt.title(f"Red {self.red_score} - {self.blue_score} Blue. {possesion.upper()} Team Has The Ball")
         minutes = int(self.t / 60)
         seconds = np.round(self.t - 60 * minutes, 2)
+        seconds = f"{seconds:05.2f}"
         plt.suptitle(f"Game Time: {minutes}:{seconds}. Action = {action.upper()}") 
         plt.xlim([xmin, xmax])
         plt.ylim([ymin, ymax])
@@ -215,17 +233,14 @@ class Hockey():
         return distances, pwb
     
     def dist_to_opposition(self,pwb,players):
-        #players = [p1,p2,p3,p4]
         return np.array([
             self.Distance(pwb[0],pwb[1],p[0],p[1]) for p in players])
     
     def distance_to_goal(self,player,team):
         # find distance from player to center of the goal
-        if team.lower() == 'red':
-            return self.Distance(player[0], player[1], 
+        if team.lower() == 'red': return self.Distance(player[0], player[1], 
                                  self.Length, self.Width/2)
-        else:
-            return self.Distance(player[0], player[1], 0, self.Width/2)
+        else: return self.Distance(player[0], player[1], 0, self.Width/2)
     
     def check_position(self,arr):
         # confirm that all players are w/in the geometry
@@ -234,6 +249,7 @@ class Hockey():
         
     @staticmethod 
     def sample_direction(team):
+        # sample angle from -pi/4 to pi/4 towards the goal. 
         angle = np.random.uniform(-np.pi/4,np.pi/4)
         return -angle if team == 'blue' else angle  
 
@@ -241,7 +257,8 @@ class Hockey():
         # Set scale parameter a (sqrt(kB*T/m)), e.g., a = 1.0
         # return the action and the person passed to
         min_dist = min(distances)
-        x = self.sample_planck(scale=5)
+        x = self.sample_gamma(Lambda = .15)
+#        x = self.sample_planck(scale=5)
         
         if min_dist > x: return None, None
         
@@ -286,25 +303,54 @@ class Hockey():
         return vector
     
     def move_attackers_without_ball(self,player_list,goal_mid, t, possesion):
+        # keep one player back
+        if possesion == 'blue':
+            defender_pos = [0,0]
+            for v in player_list:
+                if v[0] >= defender_pos[0]: defender_pos = v[:2] 
+
+        else: 
+            defender_pos = [self.Length,self.Length]
+            for v in player_list:
+                if v[0] <= defender_pos[0]: defender_pos = v[:2] 
+
         for v in player_list:
             if v[2] == self.has_ball: continue 
             speed = self.sample_gaussian(self.speed, self.speed/5)
-            if (v[0] - goal_mid[0]) != 0: theta = np.arctan((v[1] - goal_mid[1]) 
+            dist = speed * t
+
+            # if the player is told to stay back
+            if v[0] == defender_pos[0] and v[1] == defender_pos[1]: 
+                if (v[0] - .8 * self.Length != 0): theta = np.tan((v[1] - self.Width / 2) / (v[0] - .8 * self.Length))
+                else: theta = 0
+                if possesion == 'blue':
+                    if .8 * self.Length > v[0]: v[0] += dist * np.abs(np.cos(theta)) 
+                    else: v[0] -= dist * np.abs(np.cos(theta)) 
+                    v[0] = max(self.Length/2, v[0])
+                else: 
+                    if .2 * self.Length > v[0]: v[0] -= dist * np.abs(np.cos(theta)) 
+                    else: v[0] += dist * np.abs(np.cos(theta)) 
+                    v[0] = min(self.Length/2, v[0])
+                if self.Width/2 > v[1]: v[1] += dist * np.abs(np.sin(theta)) 
+                else: v[0] -= dist * np.abs(np.sin(theta)) 
+
+                v = self.clamp_vector(v)
+                continue
+
+            elif (v[0] - goal_mid[0]) != 0: theta = np.arctan((v[1] - goal_mid[1]) 
                                                             / (v[0] - goal_mid[0])) 
             else: theta = 0
-            dist = speed * t
-            if possesion == 'blue':
-                v[0] -= dist * np.cos(theta)
-                v[1] -= dist * np.sin(theta)
-            else: 
-                v[0] += dist * np.cos(theta)
-                v[1] += dist * np.sin(theta)
+            if goal_mid[0] > v[0]: v[0] += dist * np.abs(np.cos(theta))
+            else: v[0] -= dist * np.abs(np.cos(theta))
+            if goal_mid[1] > v[1]: v[1] += dist * np.abs(np.sin(theta))
+            else: v[1] -= dist * np.abs(np.sin(theta))
+
             # make sure values are in the domain            
             v = self.clamp_vector(v)
         
         return player_list
     
-    def move_defenders(self,player_list, goal_mid, t, possesion):
+    def move_defenders(self,player_list, goal_mid, t, possesion, action, overshoot = .25):
         dist_to_ball = []
         for v in player_list: dist_to_ball.append(self.Distance(v[0], v[1], 
                                                 self.ball[0], self.ball[1]))
@@ -315,30 +361,35 @@ class Hockey():
             # if the players is the closest or 2nd closest to the ball, close
             # in on the ball
             if dist_to_ball[i] == min1 or dist_to_ball[i] == min2:
-                speed = max(.01,self.sample_gaussian(self.speed, self.speed/2))
-                if (v[0] - self.ball[0]) != 0: theta = np.arctan((v[1] - self.ball[1]) 
-                                                                / (v[0] - self.ball[0])) 
-                else: theta = 0
+                #dtb_i = self.Distance(v[0], v[1],self.ball[0], self.ball[1])
+                speed = self.sample_gaussian(self.speed, self.speed/4)
+                if (v[0] - self.ball[0]) != 0: theta = (np.tan((v[1] - self.ball[1]) 
+                                                                / (v[0] - self.ball[0])))
+                # if the ball and the player are in the exact same position
+                else: 
+                    print("Weird thing happening in move defenders")
+                    theta = np.random.uniform(0,2*np.pi)
                 dist = speed * t
-                if self.ball[0] > v[0]: v[0] += dist * np.cos(theta)
-                else: v[0] -= dist * np.cos(theta)
-                if self.ball[1] > v[1]:  v[1] += dist * np.sin(theta)
-                else: v[1] -= dist * np.sin(theta)
-            
+                if self.ball[0] > v[0]: v[0] += dist * np.abs(np.cos(theta))
+                else: v[0] -= dist * np.abs(np.cos(theta))
+                if self.ball[1] > v[1]:  v[1] += dist * np.abs(np.sin(theta))
+                else: v[1] -= dist * np.abs(np.sin(theta))
+                v = self.clamp_vector(v)
+
             # if the defenders are not closest to the ball 
             else: 
                 if v[2] == self.has_ball: continue 
                 speed = self.sample_gaussian(self.speed, self.speed/5)
-                if (v[0] - goal_mid[0]) != 0: theta = np.arctan((v[1] - goal_mid[1]) 
+                if (v[0] - goal_mid[0]) != 0: theta = np.tan((v[1] - goal_mid[1]) 
                                                                 / (v[0] - goal_mid[0])) 
-                else: theta = 0
+                else: theta = np.random.uniform(0,2*np.pi)
                 dist = speed * t
-                if possesion == 'blue':
-                    v[0] -= dist * np.cos(theta)
-                    v[1] -= dist * np.sin(theta)
-                else: 
-                    v[0] += dist * np.cos(theta)
-                    v[1] += dist * np.sin(theta) 
+
+                if goal_mid[0] > v[0]: v[0] += dist * np.abs(np.cos(theta))
+                else: v[0] -= dist * np.abs(np.cos(theta))
+                if goal_mid[1] > v[1]:  v[1] += dist * np.abs(np.sin(theta))
+                else: v[1] -= dist * np.abs(np.sin(theta))
+
                 v = self.clamp_vector(v)
         
         return player_list
@@ -349,12 +400,13 @@ class Hockey():
         # actions include shoot, pass, strip, carry. 
         # sampling of those actions occur in that order
         action = 'Start'
-        #actions = 0 # debugging term    
+        actions = 0 # debugging term    
         shoot_flag = False
         if verbose: self.show_position(shoot_flag,action, self.restart_team)
         # don't get stuck in an action loop
         poss_prev = ""
         prev_action = None
+        eps = 1e-2
         
         # halftime flags
         half_time = False
@@ -362,8 +414,9 @@ class Hockey():
         
         while self.t < self.total_time:
             # set up problem for each time step
-            #actions += 1
-            t = self.sample_time(Lambda = .75)
+            actions += 1
+            t = self.sample_time()
+            #t = self.sample_time(Lambda = .75)
             print("t", self.t.round(3), "s")
             
             # if halftime at 30 minutes
@@ -374,6 +427,7 @@ class Hockey():
                 self.restart_team = ht_team
                 self.create_players()
                 half_time = True # bool to ensure this happens once
+
             # search player list to see who has the ball
             count = 0
             for arr in self.player_list:
@@ -402,6 +456,7 @@ class Hockey():
             poss_flag = False
             for v in poss_list:
                 if v[2] == self.has_ball: poss_flag = True
+
                     
             if poss_flag == False: raise ValueError("Error in Possesion Block")
 
@@ -412,14 +467,15 @@ class Hockey():
             
             # sample the action of the player with the ball
             prev_action = action
-            action = self.sample_shoot(d_goal)
-            if action == None and prev_action != 'pass': 
-                action, person = self.sample_passing(d_teammates)
+            action = self.sample_shoot(d_goal,Lambda = .10)
+            if action == None and prev_action != 'pass': action, person = self.sample_passing(d_teammates)
             
             if action == 'shoot':
-                pshoot = self.shoot_prob(d_goal)
-                pshoot = self.shoot_prob(d_goal + 10)
-                if np.random.rand() > pshoot: # score
+                dshoot = self.shoot_prob(self.max_dist, Lambda = .25)
+                #print("IN SHOOT BLOCK")
+                #print(dshoot,d_goal)
+                if dshoot > d_goal: # score
+                #if dshoot < d_goal: # score
                     for v in poss_list: v[2] = 0.0
                     if possesion == 'blue':
                         self.restart_team = 'red'
@@ -499,18 +555,20 @@ class Hockey():
                                 self.ball[0] = arr[0]
                                 self.ball[1] = arr[1]
                             
-                            # no need to check the rest of the players
-                            break
+                            break # no need to check the rest of the players
     
                     action = "carry"
 
-            
+            # plot
+            shoot_flag = True if action == 'shoot' else False
+            self.show_position(shoot_flag, action, possesion)
+
             # do action for every other player if not a shot or a strip
-            # set the vector towards the goal line where the 
-            # attacking player is headed to
+            # set the vector towards the goal line where the attacking player is headed to
             if action == 'pass' or action == 'carry':
                 h1 = np.random.uniform(self.bot_goal, self.top_goal)
                 h2 = np.random.uniform(self.bot_goal, self.top_goal)
+                # gm: point on the goal line
                 gm1 = np.array([self.Length,h1]) if possesion == 'red' else np.array([0,h1])
                 gm2 = np.array([self.Length,h2]) if possesion == 'red' else np.array([0,h2])
                 
@@ -518,17 +576,16 @@ class Hockey():
                 poss_list = self.move_attackers_without_ball(poss_list, gm1, t, possesion)
                 
                 # defenders move towards the ball or towards their goal line
-                def_list = self.move_defenders(def_list, gm2, t, possesion)
+                def_list = self.move_defenders(def_list, gm2, t, possesion, action)
 
             # printing and shortened runs
-            if verbose: 
-                print(action.upper())
-                #print(actions,action.upper())
-                shoot_flag = True if action == 'shoot' else False
-                self.show_position(shoot_flag,action, possesion)
+            if verbose: print(actions,action.upper())
                 
-            #if actions > 10: break
-            #if self.t > 100: break
+            assert -eps <= self.ball[0] < self.Length + eps
+            assert-eps <= self.ball[1] < self.Width + eps
+
+            #if actions > 20: break
+            #if self.t > 600: break
             #if self.blue_score != 0 or self.red_score!= 0: break
         
         self.animate_game()
@@ -539,9 +596,7 @@ hk = Hockey(Length,Width,num_players)
 # run
 hk.run(verbose)
 print("Game Over!")
-if hk.blue_score > hk.red_score:
-    print("Blue Team Wins!")
-elif hk.blue_score < hk.red_score:
-    print("Red Team Wins!")
-else:
-    print("It's a Tie!")
+print(f"Red {hk.score} Blue")
+if hk.blue_score > hk.red_score: print("Blue Team Wins!")
+elif hk.blue_score < hk.red_score: print("Red Team Wins!")
+else: print("It's a Tie!")
