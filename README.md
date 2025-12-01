@@ -3,8 +3,7 @@
 Same simulation assuming 2D straight-line motion. 
 
 ## Requirements
-  -  numpy==1.24.4
-      -  A depreciation warning will show up in sampling the gaussian for numpy 1.25+
+  -  numpy==1.25.0
   -  scipy==1.11.4
 
 ## Usage:
