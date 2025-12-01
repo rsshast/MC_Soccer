@@ -28,7 +28,7 @@ __sbatch batch_mc.sh__
   - Sampling Methods
       - Exponential (time) - Timesteps
       - Exponential (Space) - Shooting & Stripping
-      - Planckian (Space) - Passing
+      - Gamma Fxn (Space) - Passing
       - Gaussian (Speed) - Calcualte distance from speed and time
   - Save Frames and Animate
   - Determine Player Motions
