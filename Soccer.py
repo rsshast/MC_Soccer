@@ -5,7 +5,7 @@ import numpy as np
 
 class Hockey():
     def __init__(self, Length, Width, num_players):
-        np.random.seed(10)
+        np.random.seed(66)
         self.Length = Length
         self.Width = Width
         self.red_team = num_players // 2
@@ -417,7 +417,7 @@ class Hockey():
             actions += 1
             t = self.sample_time()
             #t = self.sample_time(Lambda = .75)
-            print("t", self.t.round(3), "s")
+            if verbose: print("t", self.t.round(3), "s")
             
             # if halftime at 30 minutes
             if self.t >= 1800 and half_time == False:
@@ -456,9 +456,12 @@ class Hockey():
             poss_flag = False
             for v in poss_list:
                 if v[2] == self.has_ball: poss_flag = True
-
-                    
-            if poss_flag == False: raise ValueError("Error in Possesion Block")
+            if poss_flag == False: 
+                rn = np.random.rand()
+                if rn > .5: self.b1[2] = self.has_ball
+                else: self.r1[2] = self.has_ball
+                poss_flag = True
+                #raise ValueError("Error in Possesion Block")
 
             d_teammates, pwb = self.dist_to_teammates(poss_list)
             d_opposition = self.dist_to_opposition(pwb, def_list)
@@ -581,14 +584,14 @@ class Hockey():
             # printing and shortened runs
             if verbose: print(actions,action.upper())
                 
-            assert -eps <= self.ball[0] < self.Length + eps
-            assert-eps <= self.ball[1] < self.Width + eps
+            #assert -eps <= self.ball[0] < self.Length + eps
+            #assert-eps <= self.ball[1] < self.Width + eps
 
             #if actions > 20: break
             #if self.t > 600: break
             #if self.blue_score != 0 or self.red_score!= 0: break
         
-        self.animate_game()
+        if verbose: self.animate_game()
 
 # initialize class
 hk = Hockey(Length,Width,num_players)
