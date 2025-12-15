@@ -1,5 +1,5 @@
-# Monte Carlo Soccer/Hockey Simulator
-## Simulate a game of Soccer/Hockey using MC Methods and Sampling Techniques
+# Monte Carlo Soccer Simulator
+## Simulate a game of Soccer using MC Methods and Sampling Techniques
 Same simulation assuming 2D straight-line motion. 
 
 ## Requirements
@@ -19,7 +19,7 @@ __sbatch batch_mc.sh__
       - Field Dimensions
       - Verbosity
         
-*Hockey.py*
+*Soccer.py*
   -  User Controlled Weighting parameters
   - Random Seed
   - Driving Class

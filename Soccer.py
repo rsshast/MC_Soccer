@@ -1,11 +1,11 @@
-# MC Simulation of an Ice Hockey Game
+# MC Simulation of a 2D Soccer Game
 # MC Class
 from params import *
 import numpy as np
 
-class Hockey():
-    def __init__(self, Length, Width, num_players):
-        np.random.seed(66)
+class Soccer():
+    def __init__(self, Length, Width, num_players,Time):
+        np.random.seed(5)
         self.Length = Length
         self.Width = Width
         self.red_team = num_players // 2
@@ -23,7 +23,7 @@ class Hockey():
         self.no_ball = 0.
         
         self.t = 0. # time (s) initally set here, updated throughout sim
-        self.total_time = 3600 # seconds
+        self.total_time = Time * 60 # seconds
         self.t_list = [0.0]
         self.action_space = ["carry", "pass", "shoot"]
         self.speed = 2 # m/s
@@ -221,11 +221,16 @@ class Hockey():
         )
     
     def dist_to_teammates(self,arrays):
+        found_pwb = False
         for i, arr in enumerate(arrays,start=0):
             if arr[2] == self.has_ball: 
                 pwb = arr # player with ball (pwb)
+                found_pwb = True
                 break
-            
+         
+        if found_pwb == False:
+            pwb = arrays[0]
+
         distances = np.array([
             self.Distance(pwb[0], pwb[1], p[0], p[1])
             for p in arrays if not np.array_equal(p, pwb) ])
@@ -407,6 +412,9 @@ class Hockey():
         poss_prev = ""
         prev_action = None
         eps = 1e-2
+
+        #xg stats
+        xg_stats = []
         
         # halftime flags
         half_time = False
@@ -433,9 +441,11 @@ class Hockey():
             for arr in self.player_list:
                 if arr[2] == self.has_ball:
                     possesion = "blue"
+                    poss_xg = 1 # for xg array
                     break
                 if count >= 3:
                     possesion = "red"
+                    poss_xg = 0
                     break
                 count += 1
             if poss_prev != possesion or action == 'strip': 
@@ -461,12 +471,10 @@ class Hockey():
                 if rn > .5: self.b1[2] = self.has_ball
                 else: self.r1[2] = self.has_ball
                 poss_flag = True
-                #raise ValueError("Error in Possesion Block")
 
             d_teammates, pwb = self.dist_to_teammates(poss_list)
             d_opposition = self.dist_to_opposition(pwb, def_list)
             d_goal = self.distance_to_goal(pwb, possesion)
-
             
             # sample the action of the player with the ball
             prev_action = action
@@ -475,10 +483,10 @@ class Hockey():
             
             if action == 'shoot':
                 dshoot = self.shoot_prob(self.max_dist, Lambda = .25)
-                #print("IN SHOOT BLOCK")
-                #print(dshoot,d_goal)
+                scored = False
                 if dshoot > d_goal: # score
-                #if dshoot < d_goal: # score
+                    scored = True
+                    xg_stats.append([self.ball[0], self.ball[1], possesion, scored])
                     for v in poss_list: v[2] = 0.0
                     if possesion == 'blue':
                         self.restart_team = 'red'
@@ -493,6 +501,7 @@ class Hockey():
                         
                 else: # miss
                     reset_list = []
+                    xg_stats.append([self.ball[0], self.ball[1], possesion, scored])
                     for player in def_list:
                         if possesion == 'red':
                             reset_list.append(self.Distance(player[0], player[1], 
@@ -509,6 +518,7 @@ class Hockey():
                     for arr in poss_list: arr[2] = 0.0
                     
                     print(f'{possesion.upper()} Team Misses Their Shot')
+
                 
             elif action == "pass": 
                 filtered_vectors = [v for v in poss_list if v[2] != self.has_ball]
@@ -593,13 +603,17 @@ class Hockey():
         
         if verbose: self.animate_game()
 
+        xg = np.array(xg_stats)
+        df = pd.DataFrame(xg_stats, columns=['x', 'y', 'team', 'result'])
+        df.to_csv("xg_stats_rs5.csv", index=False)
+
 # initialize class
-hk = Hockey(Length,Width,num_players)
+sc = Soccer(Length,Width,num_players,Time)
 
 # run
-hk.run(verbose)
+sc.run(verbose)
 print("Game Over!")
-print(f"Red {hk.score} Blue")
-if hk.blue_score > hk.red_score: print("Blue Team Wins!")
-elif hk.blue_score < hk.red_score: print("Red Team Wins!")
+print(f"Red {sc.score} Blue")
+if sc.blue_score > sc.red_score: print("Blue Team Wins!")
+elif sc.blue_score < sc.red_score: print("Red Team Wins!")
 else: print("It's a Tie!")
