@@ -5,7 +5,8 @@ import numpy as np
 
 class Soccer():
     def __init__(self, Length, Width, num_players,Time):
-        np.random.seed(5)
+        self.seed = 56
+        np.random.seed(self.seed)
         self.Length = Length
         self.Width = Width
         self.red_team = num_players // 2
@@ -425,7 +426,8 @@ class Soccer():
             actions += 1
             t = self.sample_time()
             #t = self.sample_time(Lambda = .75)
-            if verbose: print("t", self.t.round(3), "s")
+            print("t", self.t.round(3), "s")
+            #if verbose: print("t", self.t.round(3), "s")
             
             # if halftime at 30 minutes
             if self.t >= 1800 and half_time == False:
@@ -573,8 +575,9 @@ class Soccer():
                     action = "carry"
 
             # plot
-            shoot_flag = True if action == 'shoot' else False
-            self.show_position(shoot_flag, action, possesion)
+            if verbose:
+                shoot_flag = True if action == 'shoot' else False
+                self.show_position(shoot_flag, action, possesion)
 
             # do action for every other player if not a shot or a strip
             # set the vector towards the goal line where the attacking player is headed to
@@ -605,7 +608,7 @@ class Soccer():
 
         xg = np.array(xg_stats)
         df = pd.DataFrame(xg_stats, columns=['x', 'y', 'team', 'result'])
-        df.to_csv("xg_stats_rs5.csv", index=False)
+        df.to_csv(f"xg_stats_rs{self.seed}.csv", index=False)
 
 # initialize class
 sc = Soccer(Length,Width,num_players,Time)
