@@ -5,7 +5,7 @@ import numpy as np
 
 class Soccer():
     def __init__(self, Length, Width, num_players,Time):
-        self.seed = 9
+        self.seed = 8
         np.random.seed(self.seed)
         self.Length = Length
         self.Width = Width
@@ -420,16 +420,14 @@ class Soccer():
         
         # halftime flags
         half_time = False
-        ht_team = 'blue' if self.restart_team == 'red' else 'blue'
+        ht_team = 'blue' if self.restart_team == 'red' else 'red'
         
         while self.t < self.total_time:
             # set up problem for each time step
             actions += 1
             t = self.sample_time()
             #t = self.sample_time(Lambda = .75)
-            print("t", self.t.round(3), "s")
-            print(self.ball)
-            #if verbose: print("t", self.t.round(3), "s")
+            if verbose: print("t", self.t.round(3), "s")
             
             # if halftime at T/2
             if self.t >= self.total_time / 2 and half_time == False:
