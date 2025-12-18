@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=MC_soccer_datagen_5
+#SBATCH --job-name=MC_soccer_datagen_66
 #SBATCH --mail-type=All
 #SBATCH --nodes=1
 #SBATCH --partition=standard
@@ -10,6 +10,6 @@
 #SBATCH --time=06:00:00
 #SBATCH --account=bckiedro0
 #SBATCH --export=ALL
-#SBATCH --output=xg_datagen_5.out
+#SBATCH --output=xg_datagen_66.out
 
 srun --cpu-bind=cores python Soccer.py

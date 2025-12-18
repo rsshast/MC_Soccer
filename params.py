@@ -7,7 +7,7 @@ num_players = 8 # both teams, no goalie
 # set boundaries
 Length = 100    # meters
 Width  = 50     # meters
-Time   = 90   # minutes
+Time   = 5000   # minutes
 
 # printing parameters
 verbose = False

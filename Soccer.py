@@ -5,7 +5,7 @@ import numpy as np
 
 class Soccer():
     def __init__(self, Length, Width, num_players,Time):
-        self.seed = 56
+        self.seed = 9
         np.random.seed(self.seed)
         self.Length = Length
         self.Width = Width
@@ -24,6 +24,7 @@ class Soccer():
         self.no_ball = 0.
         
         self.t = 0. # time (s) initally set here, updated throughout sim
+        self.tol = 1e-3
         self.total_time = Time * 60 # seconds
         self.t_list = [0.0]
         self.action_space = ["carry", "pass", "shoot"]
@@ -229,8 +230,7 @@ class Soccer():
                 found_pwb = True
                 break
          
-        if found_pwb == False:
-            pwb = arrays[0]
+        if found_pwb == False: return False, False
 
         distances = np.array([
             self.Distance(pwb[0], pwb[1], p[0], p[1])
@@ -303,8 +303,8 @@ class Soccer():
     
     def clamp_vector(self,vector):
         # clamp the vector within the bounds
-        vector[0] = np.clip(vector[0], 0, self.Length)
-        vector[1] = np.clip(vector[1], 0, self.Width)
+        vector[0] = np.clip(vector[0], self.tol, self.Length-self.tol)
+        vector[1] = np.clip(vector[1], self.tol, self.Width-self.tol)
         
         return vector
     
@@ -374,7 +374,8 @@ class Soccer():
                 # if the ball and the player are in the exact same position
                 else: 
                     print("Weird thing happening in move defenders")
-                    theta = np.random.uniform(0,2*np.pi)
+                    theta = (np.tan((self.Width/2 - self.ball[1]) / (self.Length/2 - self.ball[0])))
+                    #theta = np.random.uniform(0,2*np.pi)
                 dist = speed * t
                 if self.ball[0] > v[0]: v[0] += dist * np.abs(np.cos(theta))
                 else: v[0] -= dist * np.abs(np.cos(theta))
@@ -427,10 +428,11 @@ class Soccer():
             t = self.sample_time()
             #t = self.sample_time(Lambda = .75)
             print("t", self.t.round(3), "s")
+            print(self.ball)
             #if verbose: print("t", self.t.round(3), "s")
             
-            # if halftime at 30 minutes
-            if self.t >= 1800 and half_time == False:
+            # if halftime at T/2
+            if self.t >= self.total_time / 2 and half_time == False:
                 print("HALFTIME")
                 print(f"Current Score: Red {self.score} Blue")
                 # let the other team start with the ball at kickoff
@@ -475,6 +477,17 @@ class Soccer():
                 poss_flag = True
 
             d_teammates, pwb = self.dist_to_teammates(poss_list)
+            if isinstance(pwb, bool) and not pwb:
+                for v in poss_list: v[2] = 0.0
+                if possesion == 'blue':
+                    self.restart_team = 'red'
+                    self.blue_score += 1
+                else:
+                    self.restart_team = 'blue'
+                    self.red_score += 1
+                self.create_players()
+                continue
+        
             d_opposition = self.dist_to_opposition(pwb, def_list)
             d_goal = self.distance_to_goal(pwb, possesion)
             
@@ -597,13 +610,9 @@ class Soccer():
             # printing and shortened runs
             if verbose: print(actions,action.upper())
                 
-            #assert -eps <= self.ball[0] < self.Length + eps
-            #assert-eps <= self.ball[1] < self.Width + eps
+            # reset if things get wonky
+            if self.ball[0] < 0 or self.ball[0] > self.Length or self.ball[1] < 0 or self.ball[1] > self.Width: self.create_players()
 
-            #if actions > 20: break
-            #if self.t > 600: break
-            #if self.blue_score != 0 or self.red_score!= 0: break
-        
         if verbose: self.animate_game()
 
         xg = np.array(xg_stats)
