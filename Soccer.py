@@ -5,7 +5,7 @@ import numpy as np
 
 class Soccer():
     def __init__(self, Length, Width, num_players,Time):
-        self.seed = 8
+        self.seed = 70
         np.random.seed(self.seed)
         self.Length = Length
         self.Width = Width
@@ -121,8 +121,7 @@ class Soccer():
     
     def sample_shoot(self,d_goal, Lambda):
         # sample the shooting action
-        # performed first 
-        # returns "shoot" or None
+        # performed first. returns "shoot" or None
         dshoot = self.shoot_prob(self.max_dist,Lambda)
         #print(dshoot,d_goal)
         return 'shoot' if dshoot >= d_goal else None
@@ -269,12 +268,14 @@ class Soccer():
         if min_dist > x: return None, None
         
         # normalize probabilities, make cloesest person most probable pass
-        dist_arr = (1 / distances) / np.sum(1/distances)
+        probs = (1.0 / distances)
+        probs = probs / probs.sum()
         rn = np.random.rand()
-        cdf = np.zeros_like(dist_arr)
-        for i in range(dist_arr.size):
-            cdf[i] = np.sum(dist_arr[:i+1])
-            if rn < cdf[i]: return "pass", distances[i]
+        cdf = np.cumsum(probs)
+        recv_idx = int(np.searchsorted(cdf, rn, side="right"))
+        recv_idx = min(recv_idx, len(distances) - 1)  # safety
+
+        return "pass", recv_idx
     
     def sample_carry(self, team):
         speed = max(.01,self.sample_gaussian(mu=self.speed, 
@@ -364,8 +365,7 @@ class Soccer():
         min1, min2 = self.two_mins(dist_to_ball)
         
         for i, v in enumerate(player_list):
-            # if the players is the closest or 2nd closest to the ball, close
-            # in on the ball
+            # if the players is the closest or 2nd closest to the ball, close in on the ball
             if dist_to_ball[i] == min1 or dist_to_ball[i] == min2:
                 #dtb_i = self.Distance(v[0], v[1],self.ball[0], self.ball[1])
                 speed = self.sample_gaussian(self.speed, self.speed/4)
@@ -438,7 +438,6 @@ class Soccer():
                 self.create_players()
                 half_time = True # bool to ensure this happens once
 
-            # search player list to see who has the ball
             count = 0
             for arr in self.player_list:
                 if arr[2] == self.has_ball:
@@ -492,7 +491,7 @@ class Soccer():
             # sample the action of the player with the ball
             prev_action = action
             action = self.sample_shoot(d_goal,Lambda = .10)
-            if action == None and prev_action != 'pass': action, person = self.sample_passing(d_teammates)
+            if action == None and prev_action != 'pass': action, recv_idx = self.sample_passing(d_teammates)
             
             if action == 'shoot':
                 dshoot = self.shoot_prob(self.max_dist, Lambda = .25)
@@ -533,14 +532,24 @@ class Soccer():
                     print(f'{possesion.upper()} Team Misses Their Shot')
 
                 
-            elif action == "pass": 
+            elif action == "pass":
                 filtered_vectors = [v for v in poss_list if v[2] != self.has_ball]
-                for v in poss_list: v[2] = 0.0
-                for i in range(len(filtered_vectors)):
-                    if person == d_teammates[i]:
-                        self.ball[0] = filtered_vectors[i][0]
-                        self.ball[1] = filtered_vectors[i][1]
-                        filtered_vectors[i][2] = self.has_ball
+            
+                # clear possession first
+                for v in poss_list:
+                    v[2] = 0.0
+            
+                # recv_idx comes from sample_passing; it matches filtered_vectors order
+                if recv_idx is not None and 0 <= recv_idx < len(filtered_vectors):
+                    self.ball[0] = filtered_vectors[recv_idx][0]
+                    self.ball[1] = filtered_vectors[recv_idx][1]
+                    filtered_vectors[recv_idx][2] = self.has_ball
+                else:
+                    # fallback: give it to nearest teammate (prevents "nobody has ball" state)
+                    recv_idx = int(np.argmin(d_teammates))
+                    self.ball[0] = filtered_vectors[recv_idx][0]
+                    self.ball[1] = filtered_vectors[recv_idx][1]
+                    filtered_vectors[recv_idx][2] = self.has_ball
                       
             elif action == None:
                 # sample distance to nearest opponent, and sample stripping
